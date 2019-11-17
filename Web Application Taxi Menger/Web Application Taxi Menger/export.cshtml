@@ -1,0 +1,507 @@
+﻿@using WebMatrix.Data
+@{
+    Layout = "_Layout.cshtml";
+    Database db = Database.Open("Menger");
+
+    if (Session["UID"] == null)
+    {
+    Response.Redirect("index.cshtml?notloggedin=true");
+    }
+
+    var data = db.Query("SELECT Klant_Naam FROM Klant"); //De query die de klanten selecteert uit de database
+    var query = "SELECT * FROM Klant WHERE Klant_Naam = @3";
+    var naam = Request.Form["klant"];
+    
+    //variablen voor de data selectie
+    var Checkbox24 = Request["24uur"];
+    var Checkbox7 = Request["7dagen"];
+    var Checkbox30 = Request["30dagen"];
+    var Checkbox365 = Request["365dagen"];
+    var CheckboxAlles = Request["alles"];
+    var CheckboxEigenData = Request["eigendata"];
+    var CheckboxKlantGegevens = Request["klantgegevens"];
+    var Checkboxquery = "";
+
+    var BeginDatumQuery = "Convert(Date, @0)";
+    var EindDatumQuery = "Convert(Date, @1)";
+
+    //is verstuurd
+
+    //validatie van de checkboxes   
+    var CheckboxValidate = "";
+
+
+    if (IsPost)
+    {
+        //checken of er een checkbox geselecteerd is
+        {
+
+            //if statements voor het selecteren van de juiste query, moet nog anders
+            if (Checkbox24 == "on") //checkbox is aangeklikt
+            {
+                Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE Klant_Naam=@2 AND RitDatum BETWEEN GETDATE()-1 and GETDATE()";
+
+            }
+
+            if (Checkbox7 == "on")
+            {
+                Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE Klant_Naam=@2 AND RitDatum BETWEEN GETDATE()-7 and GETDATE()";
+
+
+            }
+
+            if (Checkbox30 == "on")
+            {
+                Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE Klant_Naam=@2 AND RitDatum BETWEEN GETDATE()-30 and GETDATE()";
+
+            }
+            if (Checkbox365 == "on")
+            {
+                Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE Klant_Naam=@2 AND RitDatum BETWEEN GETDATE()-365 and GETDATE()";
+
+            }
+            if (CheckboxAlles == "on")
+            {
+                Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE Klant_Naam=@2";
+            }
+
+            if (CheckboxEigenData == "on")
+            {
+                Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE Klant_Naam=@2 AND RitDatum BETWEEN " + BeginDatumQuery + " AND " + EindDatumQuery;
+
+            }
+
+            if (CheckboxKlantGegevens == "on")
+            {
+
+                Checkboxquery = "SELECT * FROM Klant WHERE Klant_Naam=@2";
+
+            }
+
+            if (naam == "")
+            {
+                naam = "iedereen";
+
+            }
+
+
+
+            if (naam == "iedereen") //alle gegevens moeten worden geexporteerd
+            {
+                //we moeten nog wel weten welke checkbox aangeklikt is voor de data selectie
+                if (Checkbox24 == "on") //checkbox is aangeklikt
+                {
+
+                    //Checkboxquery = "SELECT * FROM Klant WHERE Datum between CONVERT (DATE, GETDATE()) and CONVERT (DATE, GETDATE() - 1)";
+                    Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE RitDatum BETWEEN GETDATE()-1 and GETDATE()";
+                }
+
+                if (Checkbox7 == "on")
+                {
+                    Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE RitDatum BETWEEN GETDATE()-7 and GETDATE()";
+
+
+
+                }
+
+                if (Checkbox30 == "on")
+                {
+                    Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE RitDatum BETWEEN GETDATE()-30 and GETDATE()";
+
+                }
+                if (Checkbox365 == "on")
+                {
+                    Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE RitDatum BETWEEN GETDATE()-365 and GETDATE()";
+
+                }
+                if (CheckboxAlles == "on")
+                {
+                    Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID";
+
+                }
+
+                if (CheckboxEigenData == "on")
+                {
+                    //query met data van de datepicker, door gebruiker ingevuld.
+                    Checkboxquery = "SELECT Klant.KlantID, Klant.DatumKlant, Klant.Klant_Naam, Klant.Telnummer, Klant.Hulpmiddel, Klant.Woonplaats, Klant.Bijzonderheden, Klant.Factuuradres, Klant.Debiteurnummer, Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Bestemmingsadres, Rit.Personen, Rit.ChauffeurID, Chauffeur.ChauffeurNaam, Rit.AutoID, Auto.Kenteken, Auto.Model, Auto.Merk, Auto.Soort_Wagen, Auto.Zitplaatsen From Klant INNER JOIN Rit ON Klant.KlantID=Rit.KlantID  INNER JOIN Chauffeur ON Rit.AutoID=Chauffeur.ChauffeurID  INNER JOIN Auto ON Rit.AutoID=Auto.AutoID WHERE RitDatum BETWEEN " + BeginDatumQuery + " AND " + EindDatumQuery;
+
+                }
+
+                if (CheckboxKlantGegevens == "on")
+                {
+
+                    Checkboxquery = "SELECT * FROM Klant";
+
+                }
+
+
+            }
+
+
+
+            //geen checkbox aangeklikt en geen datum ingvoerd in de datepicker
+            if (Checkboxquery == "")
+            {
+
+                CheckboxValidate = "U heeft geen datum geselecteerd, probeer het opnieuw";
+
+            }
+
+        }
+
+
+
+    }
+    }
+<!DOCTYPE html>
+<html>
+<head>
+	<link type="text/css" rel="stylesheet" href="~/css/main.css" media="screen,projection" />
+	<meta http-equiv="content-type" content="text/plain; charset=UTF-8" />
+	<title>Taxi Menger | Exporteren</title>
+	<script type="text/javascript">
+		var tableToExcel = (function () {
+			var uri = 'data:application/vnd.ms-excel;base64,'
+				, template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/></head><body><table>{table}</table></body></html>'
+				, base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))) }
+				, format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) }
+			return function (table, name) {
+				if (!table.nodeType) table = document.getElementById(table)
+				var ctx = { worksheet: name || 'Worksheet', table: table.innerHTML }
+				window.location.href = uri + base64(format(template, ctx))
+			}
+		})()
+	</script>
+
+    <script>
+$(document).ready(function(){
+    $('input:checkbox').click(function() {
+        $('input:checkbox').not(this).prop('checked', false);
+    });
+});
+    </script>
+
+</head>
+<body>
+    <iframe id="txtArea1" style="display:none"></iframe>
+    <h3 class="center">Exporteren</h3>
+    <form method="post" class="col s12">
+
+
+
+
+
+
+        <div class="klantselect">
+
+
+            <input name="klant" id="klant" list="klanten" placeholder="Klant naam">
+
+            <datalist id="klanten">
+
+                @foreach (var row in data) //foreach loop door de database met de query van variable "data"
+                {
+                    <option value="@row.Klant_Naam">
+                        @row.Klant_Naam
+                    </option>
+
+
+                }
+                    <option value="iedereen">
+                        Iedereens gegevens exporteren.
+                    </option>
+            </datalist>
+
+        </div>
+
+        <div class="col s12">
+            <!-- full width row-->
+            <div class="row">
+                <div class="input-field col s2">
+                    <p>
+                        <input type="checkbox" class="validate" name="24uur" id="24uur" />
+                        <label for="24uur">24 uur</label>
+                    </p>
+                </div>
+                <div class="input-field col s2">
+                    <p>
+                        <input type="checkbox" name="7dagen" id="7dagen" />
+                        <label for="7dagen">7 dagen</label>
+                    </p>
+                </div>
+
+                <div class="input-field col s2">
+                    <p>
+                        <input type="checkbox" name="30dagen" id="30dagen" />
+                        <label for="30dagen">30 dagen</label>
+                    </p>
+                </div>
+
+                <div class="input-field col s2">
+
+                    <p>
+                        <input type="checkbox" name="365dagen" id="365dagen" />
+                        <label for="365dagen">365 dagen</label>
+                    </p>
+
+                </div>
+                <div class="input-field col s2">
+
+                    <p>
+                        <input type="checkbox" name="alles" id="alles" />
+                        <label for="alles">Alles</label>
+                    </p>
+                </div>
+                <div class="input-field col s2">
+
+                    <p>
+                        <input type="checkbox" name="eigendata" id="eigendata" />
+                        <label for="eigendata">Eigen data</label> <!-- modal popup met de data invoer velden. -->
+                    </p>
+
+                </div>
+
+                <div class="input-field col s2">
+
+                    <p>
+                        <input type="checkbox" name="klantgegevens" id="klantgegevens" />
+                        <label for="klantgegevens">Klant gegevens</label> <!-- modal popup met de data invoer velden. -->
+                    </p>
+
+                </div>
+            </div>
+
+
+
+            <!-- einde form voor de dataselectie-->
+
+            <div class="row">
+
+
+
+                <div class="col s4 input-field right-align">
+
+                    <input id="export-datepickerBegin" type="text" name="BeginDatum" value="2018-01-01" class="datepicker">
+                    <label for="export-datepickerBegin">Begin datum</label></br>
+                </div>
+                <div class="col s4 input-field right-align">
+
+                    <input id="export-datepickerEind" type="text" name="EindDatum" value="2018-01-01" class="datepicker">
+                    <label for="export-datepickerEind">Eind datum</label>
+
+
+                </div>
+            </div>
+
+            <button class="btn waves-effect waves-light" type="submit">Gegevens laden<i class="material-icons right">send</i></button>
+
+
+
+        </div> <!-- einde col s12-->
+
+
+
+
+    </form>
+
+
+    @{if (IsPost)
+        {
+            //standaard waarden in variablen zetten om compiler errors te voorkomen.
+            if (Checkboxquery == "")
+            {
+                <h4 class="foutmelding center">@CheckboxValidate</h4>
+
+            }
+            else
+            {
+
+                var begindatum = Convert.ToDateTime(DateTime.Parse(Request.Form["BeginDatum"].Trim()).ToString("yyyy-MM-dd"));
+                var einddatum = Convert.ToDateTime(DateTime.Parse(Request.Form["EindDatum"].Trim()).ToString("yyyy-MM-dd"));
+
+                if (CheckboxKlantGegevens == "on") //andere tabel laden voor het weergeven van de klant gegevens
+                {
+                    <table id="exporttable" class="responsive-table striped col s12" style="margin-left:20px;">
+                        <h4 class="center">Klantgegevens export voorbeeld</h4>
+                        <thead>
+
+                            <tr>
+                                <th>Klant ID</th>
+                                <th>Datum Toegevoegd</th>
+                                <th>Naam Klant</th>
+                                <th>Telefoon Nummer</th>
+                                <th>Hulpmiddel</th>
+                                <th>Woonplaats</th>
+                                <th>Bijzonderheden</th>
+                                <th>Factuuradres</th>
+                                <th>Debiteur nummer</th>
+
+
+                            </tr>
+                        </thead>
+                        <tbody>
+
+
+                            @foreach (var row in db.Query(Checkboxquery, begindatum, einddatum, naam))
+    {
+                        <tr>
+                            <td width="10%">@row.KlantID</td>
+                            <td width="10%">@row.DatumKlant</td>
+                            <td width="10%">@row.Klant_Naam</td>
+                            <td width="10%">@row.Telnummer</td>
+
+                            <td width="10%">@row.Hulpmiddel</td>
+                            <td width="10%">@row.Woonplaats</td>
+                            <td width="10%">@row.Bijzonderheden</td>
+                            <td width="10%">@row.Factuuradres</td>
+                            <td width="10%">@row.Debiteurnummer</td>
+
+                        </tr>
+}
+
+                            <button class="btn waves-effect waves-light" id="btnExport" onclick="tableToExcel('exporttable', 'tabel')"> Exporteer alle gegevens<i class="material-icons right">send</i></button>
+
+                        </tbody>
+
+                    </table> //einde voorbeeld tabel van klantgegevens
+
+
+
+                }
+
+
+                else
+                {
+                    //tabel die een voorbeeld laat zien van de export
+                    <table id="voorbeeld" class="responsive-table striped col s12" style="margin-left:20px;">
+                        <h4 class="center">Voorbeeld van de ritten van @naam</h4>
+                        <thead>
+
+                            <tr>
+                                <th>Klant ID</th>
+                                <th>Naam Klant</th>
+                                <th>Hulpmiddel</th>
+                                <th>RitID</th>
+                                <th>Rit Datum</th>
+                                <th>Ophaaladres</th>
+                                <th>Bestemmingsadres</th>
+                                <th>Aantal Personen</th>
+
+                            </tr>
+                        </thead>
+                        <tbody>
+
+
+                            @foreach (var row in db.Query(Checkboxquery, begindatum, einddatum, naam))
+                            {
+                                <tr>
+                                    <td width="10%">@row.KlantID</td>
+                                    <td width="10%">@row.Klant_Naam</td>
+                                    <td width="10%">@row.Hulpmiddel</td>
+                                    <td width="10%">@row.RitID</td>
+                                    <td width="10%">@row.DatumRit</td>
+                                    <td width="10%">@row.Ophaaladres</td>
+                                    <td width="10%">@row.Bestemmingsadres</td>
+                                    <td width="10%">@row.Personen</td>
+
+
+
+
+
+                                </tr>
+                            }
+
+
+                        </tbody>
+                    </table> //einde voorbeeld tabel
+
+                    //tabel die ervoor zorgt dat de gegevens naar excel bestand worden geschreven
+
+                    //de tabel wordt niet aan de gebruiker getoond, maar wordt in de hidden div geplaatst.
+                    <div class="hiddendiv">
+                        <table id="exporttable" class="responsive-table striped col s12" style="margin-left:20px;">
+                            <h4 class="center">Voorbeeld van de export</h4>
+                            <thead>
+
+                                <tr>
+                                    <th>Klant ID</th>
+                                    <th>Datum Toegevoegd</th>
+                                    <th>Naam Klant</th>
+                                    <th>Telefoon nummer</th>
+                                    <th>Hulpmiddel</th>
+                                    <th>Woonplaats</th>
+                                    <th>Bijzonderheden</th>
+                                    <th>Factuuradres</th>
+                                    <th>Debiteurnummer</th>
+                                    <th>RitID</th>
+                                    <th>Rit Datum</th>
+                                    <th>Rit Tijd</th>
+                                    <th>Ophaaladres</th>
+                                    <th>Bestemmingsadres</th>
+                                    <th>Aantal Personen</th>
+                                    <th>Chauffeur ID</th>
+                                    <th>Chauffeur naam</th>
+                                    <th>Auto ID</th>
+                                    <th>Kenteken</th>
+                                    <th>Model</th>
+                                    <th>Merk</th>
+                                    <th>Soort wagen</th>
+                                    <th>Aantal zitplaatsen</th>
+
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                @foreach (var row in db.Query(Checkboxquery, begindatum, einddatum, naam))
+                                {
+                                    <tr>
+                                        <td width="10%">@row.KlantID</td>
+                                        <td width="10%">@row.DatumKlant</td>
+                                        <td width="10%">@row.Klant_Naam</td>
+                                        <td width="10%">@row.Telnummer</td>
+                                        <td width="10%">@row.Hulpmiddel</td>
+                                        <td width="10%">@row.Woonplaats</td>
+                                        <td width="10%">@row.Bijzonderheden</td>
+                                        <td width="10%">@row.Factuuradres</td>
+                                        <td width="10%">@row.Debiteurnummer</td>
+                                        <td width="10%">@row.RitID</td>
+                                        <td width="10%">@row.DatumRit</td>
+                                        <td width="10%">@row.Tijd</td>
+                                        <td width="10%">@row.Ophaaladres</td>
+                                        <td width="10%">@row.Bestemmingsadres</td>
+                                        <td width="10%">@row.Personen</td>
+                                        <td width="10%">@row.ChauffeurID</td>
+                                        <td width="10%">@row.Chauffeurnaam</td>
+                                        <td width="10%">@row.AutoID</td>
+                                        <td width="10%">@row.Kenteken</td>
+                                        <td width="10%">@row.Model</td>
+                                        <td width="10%">@row.Merk</td>
+                                        <td width="10%">@row.Soort_Wagen</td>
+                                        <td width="10%">@row.Zitplaatsen</td>
+
+
+
+
+
+
+
+
+                                    </tr>
+                                }
+
+
+                            </tbody>
+                        </table>
+                    </div>
+                    <button class="btn waves-effect waves-light" id="btnExport" onclick="tableToExcel('exporttable', 'tabel')"> Exporteer alle gegevens<i class="material-icons right">send</i></button>
+
+                }
+            }
+
+
+        }
+    }
+
+</body>
+</html>

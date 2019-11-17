@@ -1,0 +1,331 @@
+﻿@using WebMatrix.Data
+@{
+    Layout = "_Layout.cshtml";
+    Database db = Database.Open("Menger");
+    if (Session["UID"] == null)
+    {
+        Response.Redirect("index.cshtml?notloggedin=true");
+    }
+
+    string datum;
+    string klantnaam;
+    string telnummer;
+    string hulpmiddel;
+    string woonplaats;
+    string factuuradres;
+    string bijzonderheden;
+    string debiteurnummer;
+
+    string zoek = "";
+    string zoekinput = "";
+    int page = 1;
+    int offset = 1;
+
+    if (IsPost)
+    {
+        if (Request.Form["operation"] == "klantadd")
+        {
+            var checkbox = Request["zelfde"];
+            datum = DateTime.Now.ToString("dd-MM-yyyy");
+            klantnaam = Request.Form["voornaam"] + " " + Request.Form["achternaam"];
+            telnummer = Request.Form["telnum"];
+            hulpmiddel = Request.Form["hulpm"];
+            debiteurnummer = Request.Form["debiteur"];
+            woonplaats = Request.Form["straato"] + " " + Request.Form["hnro"] + "  " + Request.Form["pco"] + " " + Request.Form["stado"].ToUpper();
+            if (checkbox == "on")
+            {
+                factuuradres = Request.Form["straatf"] + " " + Request.Form["hnrf"] + "  " + Request.Form["pcf"] + " " + Request.Form["stadf"].ToUpper();
+            }
+            else
+            {
+                factuuradres = Request.Form["straato"] + " " + Request.Form["hnro"] + "  " + Request.Form["pco"] + " " + Request.Form["stado"].ToUpper();
+            }
+
+            bijzonderheden = Request.Form["bijzonder"];
+
+
+
+            var newklant = "INSERT INTO Klant(DatumKlant, Klant_Naam, Telnummer, Hulpmiddel, Woonplaats, Bijzonderheden, Factuuradres, Debiteurnummer) VALUES(@0,@1,@2,@3,@4,@5,@6,@7)";
+            db.Query(newklant, datum, klantnaam, telnummer, hulpmiddel, woonplaats, bijzonderheden, factuuradres, debiteurnummer);
+
+        }
+        else if (Request.Form["operation"] == "klantedit")
+        {
+            var klantupdate = "UPDATE Klant SET Klant_Naam = @0, Telnummer = @1, Hulpmiddel = @2, Debiteurnummer = @3, Woonplaats = @4, Factuuradres = @5, Bijzonderheden = @6 WHERE KlantID = @7";
+            klantnaam = Request.Form["klantnaam"];
+            telnummer = Request.Form["telnum"];
+            hulpmiddel = Request.Form["hulpmiddel"];
+            debiteurnummer = Request.Form["debitnum"];
+            woonplaats = Request.Form["woonadres"];
+            factuuradres = Request.Form["factuuradres"];
+            bijzonderheden = Request.Form["bijzonder"];
+            int rowklant = Request.Form["KlantID"].AsInt();
+            @debiteurnummer;
+            db.Query(klantupdate, klantnaam, telnummer, hulpmiddel, debiteurnummer, woonplaats, factuuradres, bijzonderheden, rowklant);
+
+        }
+        else if (Request.Form["operation"] == "klantdelete")
+        {
+            int klantid = Convert.ToInt32(Request.Form["klantid"]);
+            var deleteklant = ("DELETE FROM Klant WHERE KlantID = @0");
+
+            db.Query(deleteklant, klantid);
+        }
+    }
+
+    if (Request.QueryString["page"] != "")
+    {
+        page = Convert.ToInt32(Request.QueryString["page"]);
+    }
+    if (page >= offset)
+    {
+        offset = page;
+    }
+    if (!String.IsNullOrEmpty(Request.QueryString["zoek_input"]))
+    {
+        zoekinput = Request.QueryString["zoek_input"];
+        zoek = "WHERE KlantID LIKE '%'+@0+'%' OR DatumKlant LIKE '%'+@0+'%' OR Klant_naam LIKE '%'+@0+'%' OR Telnummer LIKE '%'+@0+'%' OR Hulpmiddel LIKE '%'+@0+'%' OR Woonplaats LIKE '%'+@0+'%' OR Bijzonderheden LIKE '%'+@0+'%'";
+    }
+
+    //Ophalen van ALLE resultaten die voldoen aan zoek gegevens. Dit is voor het tellen van totale hoeveelheid resulaten
+    int ResultRowCount = db.Query("SELECT * FROM Klant " + zoek + " ORDER BY KlantID", zoekinput).Count();
+    //Hoeeelheid resultaten + 10 records per pagina - 1 en dan delen door records per pagina.
+    int MaxPagination = (ResultRowCount + 10 - 1) / 10;
+
+    var KlantenResults = db.Query("SELECT * FROM Klant " + zoek + " ORDER BY KlantID OFFSET (@1-1)*10 ROWS FETCH NEXT 10 ROWS ONLY", zoekinput, offset);
+
+}
+
+<div class="col s12 m6 l4 input-field right-align">
+    <form method="get">
+        <input id="klanten-zoek" type="text"  name="zoek_input" value="@zoekinput">
+        <label for="klanten-zoek">Zoek</label>
+        <button class="btn waves-effect waves-light" type="submit">Zoek<i class="material-icons right">send</i></button>
+    </form>
+</div>
+
+<table class="responsive-table striped col s12">
+    <thead>
+        <tr>
+            <th>Klant nummer</th>
+            <th>Creëer datum</th>
+            <th>Naam klant</th>
+            <th>Telefoonnummer</th>
+            <th>Hulpmiddel</th>
+            <th>Woonplaats</th>
+            <th>Bijzonderheden</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            int i = 0;
+            foreach (var row in KlantenResults)
+            {
+                <tr onclick="document.getElementById('@i').submit();">
+
+                    <td><form method="post" id="@i"><input type="hidden" name="operation" value="RowClick" /><input type="hidden" name="KlantID" value="@row.KlantID" /></form>@row.KlantID</td>
+                    <td>@row.DatumKlant</td>
+                    <td>@row.Klant_Naam</td>
+                    <td>@row.Telnummer</td>
+                    <td>@row.Hulpmiddel</td>
+                    <td>@row.Woonplaats</td>
+                    <td>@row.Bijzonderheden</td>
+                </tr>
+                i++;
+            }
+        }
+    </tbody>
+</table>
+<div class="row"></div>
+
+
+
+<div id="modal1" class="modal">
+    <div class="modal-content">
+        <div class="container">
+            <form method="post">
+                <input type="hidden" name="operation" value="klantadd" />
+                <div class="row">
+                    <div class="input-field col s6">
+                        <input name="voornaam" type="text" class="validate">
+                        <label for="voornaam">Voornaam</label>
+                    </div>
+                    <div class="input-field col s6">
+                        <input name="achternaam" type="text" class="validate">
+                        <label for="achternaam">Achternaam</label>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="input-field col s6">
+                        <input name="debiteur" type="text" class="validate">
+                        <label for="debiteur">Debiteurnummer</label>
+                    </div>
+                    <div class="input-field col s6">
+                        <input name="hulpm" type="text" class="validate">
+                        <label for="hulpm">Hulpmiddelen</label>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="input-field col s6">
+                        <input name="telnum" type="text" class="validate">
+                        <label for="telnum">Telefoonnummer</label>
+                    </div>
+                    <div class="input-field col s6">
+                        <input name="bijzonder" type="text" class="validate">
+                        <label for="bijzonder">Bijzonderheden</label>
+                    </div>
+                </div>
+
+                <div class="row"><div class="col s6"><center><label>Woonadres</label></center></div><div class="col s6"><center><label>Factuuradres</label></center></div></div>
+                <div class="row">
+                    <div class="col s6">
+                        <div class="input-field col s7">
+                            <input name="pco" type="text" class="validate">
+                            <label for="pco">Postcode</label>
+                        </div>
+                        <div class="input-field col s5">
+                            <input name="hnro" type="text" class="validate">
+                            <label for="hnro">Huisnummer</label>
+                        </div>
+                        <div class="input-field col s12">
+                            <input name="straato" type="text" class="validate">
+                            <label for="straato">Straat</label>
+                        </div>
+                        <div class="input-field col s12">
+                            <input name="stado" type="text" class="validate">
+                            <label for="stado">Stad</label>
+                        </div>
+                    </div>
+                    <div class="col s6">
+                        <div class="input-field col s7">
+                            <input name="pcf" type="text" class="validate factuur">
+                            <label for="pcf">Postcode</label>
+                        </div>
+                        <div class="input-field col s5">
+                            <input name="hnrf" type="text" class="validate factuur">
+                            <label for="hnrf">Huisnummer</label>
+                        </div>
+                        <div class="input-field col s12">
+                            <input name="straatf" type="text" class="validate factuur">
+                            <label for="straatf">Straat</label>
+                        </div>
+                        <div class="input-field col s12">
+                            <input name="stadf" type="text" class="validate factuur">
+                            <label for="stadf">Stad</label>
+                        </div>
+                        <div class="col s3">
+
+                            <input type="checkbox" id="zelfde" name="zelfde" />
+                            <label for="zelfde">Factuuradres wijkt af</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="input-field col s2"></div>
+                    <button class="btn waves-effect waves-light red" type="submit" name="action">Opslaan</button>
+                    <button class="btn modal-action modal-close" style="background-color:#f5f5f5; color: black" type="button">Annuleren</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="pagination-long" class="col s10 pagination"></div>
+<a href="#modal1" class="btn-floating btn-large waves-effect waves-light right red modal-trigger"><i class="material-icons">add</i></a>
+
+<script src="/js/Pagination-Mirjam/materialize-pagination.js"></script>
+<script>
+    $(function () {
+        $(function () {
+            $('#pagination-long').materializePagination({
+                align: 'center',
+                lastPage: @MaxPagination,
+                firstPage: 1,
+                urlParameter: 'page',
+                useUrlParameter: true,
+                onClickCallback: function (requestedPage) {
+                    //console.log('Requested page is ' + requestedPage);
+                    setTimeout(function () { location.reload(); }, 0);
+                    //Set timeout is een fix voor Firefox
+                }
+            });
+        });
+    });
+</script>
+
+@{
+    if (Request.Form["operation"] == "RowClick")
+    {
+        int rowklant = Request.Form["KlantID"].AsInt();
+        klantnaam = db.QueryValue("SELECT Klant_Naam FROM Klant WHERE KlantID = @0", rowklant);
+        telnummer = db.QueryValue("SELECT Telnummer FROM Klant WHERE KlantID = @0", rowklant);
+        hulpmiddel = db.QueryValue("SELECT Hulpmiddel FROM Klant WHERE KlantID = @0", rowklant);
+        debiteurnummer = db.QueryValue("SELECT Debiteurnummer FROM Klant WHERE KlantID = @0", rowklant);
+        woonplaats = db.QueryValue("SELECT Woonplaats FROM Klant WHERE KlantID = @0", rowklant);
+        factuuradres = db.QueryValue("SELECT Factuuradres FROM Klant WHERE KlantID = @0", rowklant);
+        bijzonderheden = db.QueryValue("SELECT Bijzonderheden FROM Klant WHERE KlantID = @0", rowklant);
+
+        <script>
+            $(document).ready(function () {
+                $('#modal2').modal();
+                $('#modal2').modal('open');
+            });
+        </script>
+
+        <div id="modal2" class="modal">
+            <div class="modal-content">
+                <div class="container">
+                    <form method="post">
+                        <input type="hidden" name="operation" value="klantedit" />
+                        <input type="hidden" name="KlantID" value="@rowklant" />
+                        <div class="row">
+                            <div class="input-field col s6">
+                                <input name="klantnaam" value="@klantnaam" type="text" class="validate">
+                                <label for="klantnaam">Klantnaam</label>
+                            </div>
+                            <div class="input-field col s6">
+                                <input name="telnum" value="@telnummer" type="text" class="validate">
+                                <label for="telnum">Telefoonnummer</label>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="input-field col s6">
+                                <input name="woonadres" value="@woonplaats" type="text" class="validate">
+                                <label for="woonadres">Woonadres</label>
+                            </div>
+                            <div class="input-field col s6">
+                                <input name="factuuradres" value="@factuuradres" type="text" class="validate">
+                                <label for="factuuradres">Factuuradres</label>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="input-field col s6">
+                                <input name="hulpmiddel" value="@hulpmiddel" type="text" class="validate">
+                                <label for="hulpmiddel">Hulpmiddelen</label>
+                            </div>
+                            <div class="input-field col s6">
+                                <input name="bijzonder" value="@bijzonderheden" type="text" class="validate">
+                                <label for="bijzonder">Bijzonderheden</label>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="input-field col s6">
+                                <input name="debitnum" value="@debiteurnummer" type="text" class="validate">
+                                <label for="debitnummer">Debiteurnummer</label>
+                            </div>
+                        </div>
+                        <div class="col s6">
+                            <button class="btn waves-effect waves-light green" type="submit" name="action">Opslaan</button>
+                            <button class="btn modal-action modal-close" style="background-color:#f5f5f5; color: black" type="button">Annuleren</button>
+                        </div>
+                    </form>
+                    <div class="col s6">
+                        <form method="post"><input type="hidden" name="operation" value="klantdelete" /><input type="hidden" name="klantid" value="@rowklant" /><button class="btn waves-effect waves-light red" type="submit" name="action">Klant Verwijderen</button></form>
+                    </div>
+                    <div class="row"></div>
+                </div>
+            </div>
+        </div>
+    }
+}

@@ -1,0 +1,257 @@
+﻿@using WebMatrix.Data
+@{
+	Layout = "_Layout.cshtml";
+	Database db = Database.Open("Menger");
+	if (Session["UID"] == null)
+	{
+		Response.Redirect("index.cshtml?notloggedin=true");
+	}
+
+	string kenteken;
+	string merk;
+	string model;
+	string soort;
+	int zitplaatsen;
+
+
+	if (IsPost)
+	{
+		if (Request.Form["operation"] == "autoadd")
+		{
+			kenteken = Request.Form["kenteken"].ToUpper();
+			merk = Request.Form["merk"];
+			model = Request.Form["model"];
+			soort = Request.Form["soort"];
+			zitplaatsen = Request.Form["zitplaatsen"].AsInt();
+
+
+			var newauto = "INSERT INTO Auto(Kenteken, Merk, Model, Soort_Wagen, Zitplaatsen) VALUES (@0, @1, @2, @3, @4)";
+			db.Query(newauto, kenteken, merk, model, soort, zitplaatsen);
+		}
+		else if (Request.Form["operation"] == "autoedit")
+		{
+			int rowauto = Request.Form["AutoID"].AsInt();
+			kenteken = Request.Form["kenteken"].ToUpper();
+			merk = Request.Form["merk"];
+			model = Request.Form["model"];
+			soort = Request.Form["soort"];
+			zitplaatsen = Request.Form["zitplaatsen"].AsInt();
+
+
+			var editauto = "UPDATE Auto SET Kenteken = @0, Merk = @1, Model = @2, Soort_Wagen = @3, Zitplaatsen = @4 WHERE AutoID = @5";
+			db.Query(editauto, kenteken, merk, model, soort, zitplaatsen, rowauto);
+		}
+		else if (Request.Form["operation"] == "autodelete")
+		{
+			int autoid = Convert.ToInt32(Request.Form["AutoID"]);
+			var deleteauto = ("DELETE FROM Auto WHERE AutoID = @0");
+
+			db.Query(deleteauto, autoid);
+
+		}
+	}
+
+	string zoek = "";
+	string zoekinput = "";
+	int page = 1;
+	int offset = 1;
+
+	if (Request.QueryString["page"] != "")
+	{
+		page = Convert.ToInt32(Request.QueryString["page"]);
+	}
+	if (page >= offset)
+	{
+		offset = page;
+	}
+
+	if (!String.IsNullOrEmpty(Request.QueryString["zoek_input"]))
+	{
+		zoekinput = Request.QueryString["zoek_input"];
+		zoek = "WHERE AutoID LIKE '%'+@0+'%' OR Kenteken LIKE '%'+@0+'%' OR Model LIKE '%'+@0+'%' OR Merk LIKE '%'+@0+'%' OR Soort_Wagen LIKE '%'+@0+'%' OR Zitplaatsen LIKE '%'+@0+'%'";
+	}
+
+	//Ophalen van ALLE resultaten die voldoen aan zoek gegevens. Dit is voor het tellen van totale hoeveelheid resulaten
+	int ResultRowCount = db.Query("SELECT * FROM Auto " + zoek, zoekinput).Count();
+	//Hoeeelheid resultaten + 10 records per pagina - 1 en dan delen door records per pagina.
+	int MaxPagination = (ResultRowCount + 10 - 1) / 10;
+
+	var Autos = db.Query("SELECT * FROM Auto " + zoek + " ORDER BY AutoID OFFSET (@1-1)*10 ROWS FETCH NEXT 10 ROWS ONLY", zoekinput, offset);
+
+}
+
+
+
+<div class="col s12 m6 l4 input-field right-align">
+	<form method="get">
+		<input type="text" id="Auto-zoek" name="zoek_input" class="autocomplete" value="@zoekinput">
+		<label for="Auto-zoek">Zoek</label>
+		<button class="btn waves-effect waves-light" type="submit">Zoek<i class="material-icons right">send</i></button>
+	</form>
+</div>
+
+<!-- Modal Structure -->
+
+<div class="col s12">
+	<table class="responsive-table striped col s12">
+		<thead>
+			<tr>
+				<th>Auto ID</th>
+				<th>Kenteken</th>
+				<th>Model</th>
+				<th>Merk</th>
+				<th>Soort Wagen</th>
+				<th>Zitplaatsen</th>
+			</tr>
+
+		</thead>
+		<tbody>
+			@{int i = 0;
+				foreach (var row in Autos)
+				{
+					<tr onclick="document.getElementById('@i').submit(); ">
+						<td style="display:none;"><form method="post" id="@i"><input type="hidden" name="operation" value="RowClick" /><input type="hidden" name="AutoID" value="@row.AutoID" /></form></td>
+						<td>@row.AutoID</td>
+						<td>@row.Kenteken</td>
+						<td>@row.Model</td>
+						<td>@row.Merk</td>
+						<td>@row.Soort_Wagen</td>
+						<td>@row.Zitplaatsen</td>
+					</tr>
+					i++;
+				}
+			}
+		</tbody>
+	</table>
+</div>
+
+<div id="pagination-long" class="col s10 pagination"></div>
+<a href="#modal1" class="btn-floating btn-large waves-effect waves-light right red modal-trigger"><i class="material-icons">add</i></a>
+
+<script src="/js/Pagination-Mirjam/materialize-pagination.js"></script>
+<script>
+    $(function () {
+        $(function () {
+            $('#pagination-long').materializePagination({
+                align: 'center',
+                lastPage: @MaxPagination,
+                firstPage: 1,
+                urlParameter: 'page',
+                useUrlParameter: true,
+                onClickCallback: function (requestedPage) {
+                    //console.log('Requested page is ' + requestedPage);
+                    setTimeout(function () { location.reload(); }, 0);
+                    //Set timeout is een fix voor Firefox
+                }
+            });
+        });
+    });
+</script>
+
+
+<div id="modal1" class="modal">
+	<div class="modal-content">
+		<div class="container">
+			<form method="post">
+				<input type="hidden" name="operation" value="autoadd" />
+				<div class="row">
+					<div class="input-field col s6">
+						<input name="kenteken" type="text" class="validate">
+						<label for="kenteken">Kenteken</label>
+					</div>
+				</div>
+				<div class="row">
+					<div class="input-field col s6">
+						<input name="merk" type="text" class="validate">
+						<label for="merk">Merk</label>
+					</div>
+					<div class="input-field col s6">
+						<input name="model" type="text" class="validate">
+						<label for="model">Model</label>
+					</div>
+				</div>
+				<div class="row">
+					<div class="input-field col s6">
+						<input name="soort" type="text" class="validate">
+						<label for="soort">Soort wagen</label>
+					</div>
+					<div class="input-field col s6">
+						<input name="zitplaatsen" type="text" class="validate">
+						<label for="zitplaatsen">Zitplaatsen</label>
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="input-field col s2"></div>
+					<button class="btn waves-effect waves-light green" type="submit" name="action">Opslaan</button>
+					<button class="btn modal-action modal-close" style="background-color:#f5f5f5; color: black" type="button">Annuleren</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+@{
+	if (Request.Form["operation"] == "RowClick")
+	{
+		int rowauto = Request.Form["AutoID"].AsInt();
+		kenteken = db.QueryValue("SELECT Kenteken FROM Auto WHERE AutoID = @0", rowauto);
+		merk = db.QueryValue("SELECT Merk FROM Auto WHERE AutoID = @0", rowauto);
+		model = db.QueryValue("SELECT Model FROM Auto WHERE AutoID = @0", rowauto);
+		soort = db.QueryValue("SELECT Soort_Wagen FROM Auto WHERE AutoID = @0", rowauto);
+		zitplaatsen = Convert.ToInt32(db.QueryValue("SELECT Zitplaatsen FROM Auto WHERE AutoID = @0", rowauto));
+
+		<script>
+			$(document).ready(function () {
+				$('#modal2').modal();
+				$('#modal2').modal('open');
+			});
+		</script>
+
+		<div id="modal2" class="modal">
+			<div class="modal-content">
+				<div class="container">
+					<form method="post">
+						<input type="hidden" name="operation" value="autoedit" />
+						<input type="hidden" name="AutoID" value="@rowauto" />
+						<div class="row">
+							<div class="input-field col s6">
+								<input name="kenteken" type="text" class="validate" value="@kenteken">
+								<label for="kenteken">Kenteken</label>
+							</div>
+						</div>
+						<div class="row">
+							<div class="input-field col s6">
+								<input name="merk" type="text" class="validate" value="@merk">
+								<label for="merk">Merk</label>
+							</div>
+							<div class="input-field col s6">
+								<input name="model" type="text" class="validate" value="@model">
+								<label for="model">Model</label>
+							</div>
+						</div>
+						<div class="row">
+							<div class="input-field col s6">
+								<input name="soort" type="text" class="validate" value="@soort">
+								<label for="soort">Soort wagen</label>
+							</div>
+							<div class="input-field col s6">
+								<input name="zitplaatsen" type="text" class="validate" value="@zitplaatsen">
+								<label for="zitplaatsen">Zitplaatsen</label>
+							</div>
+						</div>
+
+						<div class="col s6">
+							<button class="btn waves-effect waves-light green" type="submit" name="action">Opslaan</button>
+							<button class="btn modal-action modal-close" style="background-color:#f5f5f5; color: black" type="button">Annuleren</button>
+						</div>
+					</form>
+					<div class="col s6">
+						<form method="post"><input type="hidden" name="operation" value="autodelete" /><input type="hidden" name="AutoID" value="@rowauto" /><button class="btn waves-effect waves-light red" type="submit" name="action">Auto Verwijderen</button></form>
+					</div>
+					<div class="row"></div>
+				</div>
+			</div>
+		</div>
+	}
+}

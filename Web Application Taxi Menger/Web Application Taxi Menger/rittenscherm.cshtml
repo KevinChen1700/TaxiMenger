@@ -1,0 +1,675 @@
+﻿@using WebMatrix.Data
+@{
+    Layout = "_Layout.cshtml";
+    Database db = Database.Open("Menger");
+    if (Session["UID"] == null)
+    {
+        Response.Redirect("index.cshtml?notloggedin=true");
+    }
+    string rol = Session["Rol"].ToString();
+    int chauffeurID;
+    bool isChauffeur = false;
+    int userID = Convert.ToInt32(Session["UID"]);
+
+    if (rol == "Chauffeur")
+    {
+        chauffeurID = db.QueryValue("SELECT ChauffeurID FROM Users WHERE UserID = @0", userID);
+        isChauffeur = true;
+    }
+
+    string datum = DateTime.Now.ToString("dd-MM-yyyy");
+    string DisplayDatum = "";
+    string zoek = "";
+    string zoekinput = "";
+    int page = 1;
+    int offset = 1;
+    //@datum;
+    string bijzonderheden;
+    string hulpmiddelen;
+
+    int ritid;
+    string klantid;
+    int autoid;
+    int chauffeurid;
+
+    string ophaaladres;
+    string ophaalplaats;
+    string bestemmingsadres;
+    string bestemmingsplaats;
+
+    string ritdatum;
+    string rittijd;
+    string personen;
+
+    if (Request.QueryString["page"] != "")
+    {
+        page = Convert.ToInt32(Request.QueryString["page"]);
+    }
+    if (page >= offset)
+    {
+        offset = page;
+    }
+
+    if (Session["Ritten_Datum_display"] != null)
+    {
+        DisplayDatum = Convert.ToString(Session["Ritten_Datum_display"]);
+    }
+    if (Session["Ritten_Datum"] != null)
+    {
+        datum = Convert.ToString(Session["Ritten_datum"]);
+    }
+    if (Session["Ritten_zoek"] != null)
+    {
+        zoek = Convert.ToString(Session["Ritten_zoek"]);
+    }
+    if (!String.IsNullOrEmpty(Request.QueryString["zoek_input"]))
+    {
+        zoekinput = Request.QueryString["zoek_input"];
+        zoek = "AND (Rit.Tijd LIKE '%'+@0+'%' OR Rit.Ophaaladres LIKE '%'+@0+'%' OR Rit.Bestemmingsadres LIKE '%'+@0+'%' OR Rit.Personen LIKE '%'+@0+'%' OR Chauffeur.ChauffeurNaam LIKE '%'+@0+'%' OR Klant.Klant_Naam LIKE '%'+@0+'%' OR Auto.Soort_Wagen LIKE '%'+@0+'%' OR Auto.Kenteken LIKE '%'+@0+'%')";
+    }
+
+    if (IsPost)
+    {
+        if (Request.Form["operation"] == "date")
+        {
+            string inputdatum = Request.Form["date_input"];
+            string inputzoek = Request.Form["zoek_input"];
+            if (!String.IsNullOrEmpty(inputdatum))
+            {
+                datum = DateTime.Parse(Request.Form["date_input"].Trim()).ToString("dd-MM-yyyy");
+                Session["Ritten_Datum"] = datum;
+                DisplayDatum = inputdatum;
+                Session["Ritten_Datum_display"] = DisplayDatum;
+
+                //Page 1 maken als je van datum verandert
+                offset = 1;
+            }
+            else if (!String.IsNullOrEmpty(inputzoek))
+            {
+                zoek = inputzoek;
+                Session["Ritten_zoek"] = zoek;
+            }
+
+        }
+        else if (Request.Form["operation"] == "ritadd")
+        {
+            ophaalplaats = Request.Form["stado"].ToUpper();
+            bestemmingsplaats = Request.Form["stadb"].ToUpper();
+
+            ophaaladres = Request.Form["straato"] + " " + Request.Form["hnro"] + " " + Request.Form["pco"] + " " + Request.Form["stado"].ToUpper();
+            bestemmingsadres = Request.Form["straatb"] + " " + Request.Form["hnrb"] + " " + Request.Form["pcb"] + " " + Request.Form["stadb"].ToUpper();
+
+            klantid = Request.Form["klantid"];
+            autoid = Request.Form["autoid"].AsInt();
+            chauffeurid = Request.Form["chauffeurid"].AsInt();
+
+
+
+            ritdatum = DateTime.Parse(Request.Form["ritdatum"].Trim()).ToString("dd-MM-yyyy");
+            var ritdatumquery = Convert.ToDateTime(DateTime.Parse(Request.Form["ritdatum"].Trim()).ToString("dd-MM-yyyy"));
+            rittijd = Request.Form["rittijd"];
+            personen = Request.Form["pers"];
+            personen = Request.Form["pers"];
+
+            var herhalen = Request["herhalen"];
+
+            if (herhalen == "on")
+            {
+                string herhaling = Request.Form["herhaler"];
+                string begindat = Request.Form["begindat"];
+                string einddat = Request.Form["einddat"];
+            }
+            else
+            {
+                string autoinput = autoid.ToString();
+                string chauffeurinput = chauffeurid.ToString();
+
+                if (autoid == 0)
+                {
+                    autoinput = "1";
+                }
+                if (chauffeurid == 0)
+                {
+                    chauffeurinput = "1";
+                }if (klantid == "1")
+                {
+                    klantid = "1";
+                }
+                @ritdatum;
+                var ritquery = "INSERT INTO Rit(DatumRit, Tijd, Ophaaladres, Ophaalplaats, Bestemmingsadres, Bestemmingsplaats, Personen, KlantID, AutoID, ChauffeurID, RitDatum) VALUES (@0, @1,@2,@3,@4,@5,@6,@7,@8,@9, @10)";
+
+                db.Query(ritquery, ritdatum, rittijd, ophaaladres, ophaalplaats, bestemmingsadres, bestemmingsplaats, personen, klantid, autoinput, chauffeurinput, ritdatumquery);
+            }
+        }
+        else if (Request.Form["operation"] == "riteditsub")
+        {
+            klantid = Request.Form["klantid"];
+            ritid = Request.Form["ritid"].AsInt();
+
+
+            ophaaladres = Request.Form["ophaal"];
+            bestemmingsadres = Request.Form["bestemming"];
+            ophaalplaats = Request.Form["ophaalp"].ToUpper(); ;
+            bestemmingsplaats = Request.Form["bestemmingp"].ToUpper();
+            ritdatum = DateTime.Parse(Request.Form["ritdatum"].Trim()).ToString("dd-MM-yyyy");
+            var ritdatumquery = Convert.ToDateTime(DateTime.Parse(Request.Form["ritdatum"].Trim()).ToString("dd-MM-yyyy"));
+            rittijd = Request.Form["rittijd"];
+            personen = Request.Form["pers"];
+
+            autoid = Convert.ToInt32(Request.Form["autoid"]);
+            chauffeurid = Convert.ToInt32(Request.Form["chauffeurid"]);
+
+            var ritupdate = "UPDATE Rit SET Ophaaladres = @0, Bestemmingsadres = @1, Ophaalplaats = @2, Bestemmingsplaats = @3, DatumRit = @4, RitDatum = @5, Tijd = @6, Personen = @7, AutoID = @8 , chauffeurID  = @9, KlantID = @10 WHERE RitID = @11";
+            db.Query(ritupdate, ophaaladres, bestemmingsadres, ophaalplaats, bestemmingsplaats, ritdatum, ritdatumquery, rittijd, personen, autoid, chauffeurid, klantid, ritid);
+        }
+
+    }
+
+    //Ophalen van ALLE resultaten die voldoen aan zoek gegevens. Dit is voor het tellen van totale hoeveelheid resulaten
+    int ResultRowCount = db.Query("SELECT Rit.RitID FROM Rit LEFT JOIN KLANT ON Rit.KlantID=Klant.KlantID LEFT JOIN AUTO ON Rit.AutoID=Auto.AutoID LEFT JOIN CHAUFFEUR ON Rit.ChauffeurID=Chauffeur.ChauffeurID WHERE Rit.DatumRit = @1 " + zoek, zoekinput, datum).Count();
+    //Hoeeelheid resultaten + 10records per pagina - 1 en dan delen door records per pagina.
+    int MaxPagination = (ResultRowCount + 8 - 1) / 8;
+    //>>>10<<< Resultaten van pagina ?
+
+    var RittenResults = db.Query("SELECT Rit.RitID, Rit.DatumRit, Rit.Tijd, Rit.Ophaaladres, Rit.Ophaalplaats, Rit.Bestemmingsplaats, Rit.Bestemmingsadres, Klant.Klant_Naam, Rit.Personen, Auto.Kenteken, Auto.Soort_Wagen, Chauffeur.ChauffeurNaam FROM Rit LEFT JOIN KLANT ON Rit.KlantID=Klant.KlantID LEFT JOIN AUTO ON Rit.AutoID=Auto.AutoID LEFT JOIN CHAUFFEUR ON Rit.ChauffeurID=Chauffeur.ChauffeurID WHERE Rit.DatumRit = @1 " + zoek + " ORDER BY tijd ASC OFFSET (@2-1)*8 ROWS FETCH NEXT 8 ROWS ONLY", zoekinput, datum, offset);
+    var KlantenResults = db.Query("SELECT * FROM Klant");
+    var AutoResults = db.Query("SELECT * FROM Auto");
+    var ChauffeurResults = db.Query("SELECT * FROM Chauffeur");
+
+}
+
+<div class="col s6 m4 input-field right-align">
+    <form method="post">
+        <input type="hidden" name="operation" value="date" />
+        <input id="ritten-datepicker" type="text" name="date_input" class="datepicker" value="@DisplayDatum">
+        <label for="ritten-datepicker">Datum</label>
+        <button class="btn waves-effect waves-light" type="submit" name="action">Ga<i class="material-icons right">send</i></button>
+    </form>
+</div>
+<div class="col s6 m4 offset-m4 input-field left-align">
+    <form method="get">
+        <input type="text" name="zoek_input" id="ritten-zoek" value="@zoekinput" class="autocomplete">
+        <label for="ritten-zoek">Rit zoeken</label>
+        <button class="btn waves-effect waves-light" type="submit" name="action">Zoek<i class="material-icons right">send</i></button>
+    </form>
+</div>
+<table class="responsive-table striped col s12">
+    <thead>
+        <tr>
+            <th>Datum</th>
+            <th>Tijd</th>
+            <th>Ophaalplaats</th>
+            <th>Bestemmingplaats</th>
+            <th>Klant</th>
+            <th>Personen</th>
+            <th>Soort Wagen</th>
+            <th>Kenteken</th>
+            <th>Chauffeur</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{ int i = 0;
+            bool sqldone = false;
+            if (sqldone == false)
+            {
+                foreach (var row in RittenResults)
+                {
+                    <tr onclick="document.getElementById('@i').submit(); ">
+                        <td style="display:none;"><form method="post" id="@i"><input type="hidden" name="operation" value="RowClick" /><input type="hidden" name="RitID" value="@row.RitID" /></form></td>
+                        <td>@row.DatumRit</td>
+                        <td>@row.Tijd</td>
+                        <td>@row.Ophaalplaats</td>
+                        <td>@row.Bestemmingsplaats</td>
+                        <td>@row.Klant_Naam</td>
+                        <td>@row.Personen</td>
+                        <td>@row.Soort_Wagen</td>
+                        <td>@row.Kenteken</td>
+                        <td>@row.ChauffeurNaam</td>
+                    </tr>i++;
+                }
+                sqldone = true;
+            }
+        }
+
+    </tbody>
+</table>
+<div class="row"></div>
+<div class="row">
+    <div class="col s6">
+        @{
+            if (Request.Form["operation"] == "RowClick")
+            {
+                int rowritid;
+                rowritid = Request.Form["RitID"].AsInt();
+                
+                int rowklantid = db.QueryValue("SELECT KlantID FROM Rit WHERE RitID = @0", rowritid);
+
+                ophaaladres = db.QueryValue("SELECT Ophaaladres FROM Rit WHERE RitID = @0", rowritid);
+                bestemmingsadres = db.QueryValue("SELECT Bestemmingsadres FROM Rit WHERE RitID = @0", rowritid);
+                hulpmiddelen = db.QueryValue("SELECT Hulpmiddel FROM Klant WHERE KlantID = @0", rowklantid);
+                bijzonderheden = db.QueryValue("SELECT Bijzonderheden FROM Klant WHERE KlantID = @0", rowklantid);
+
+                <form method="post">
+                    <input type="hidden" name="operation" value="ritedit" />
+                    <input type="hidden" name="ritid" value="@rowritid" />
+                    <input type="hidden" name="klantid" value="@rowklantid" />
+                    <table class="striped">
+                        <thead>
+                            <tr><center><b>Rit Informatie</b></center></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th>Ophaaladres</th>
+                                <td>@ophaaladres</td>
+                            </tr>
+                            <tr>
+                                <th>Bestemmingsadres</th>
+                                <td>@bestemmingsadres</td>
+                            </tr>
+                            <tr>
+                                <th>Hulpmiddelen</th>
+                                <td>@hulpmiddelen</td>
+                            </tr>
+                            <tr>
+                                <th>Bijzonderheden</th>
+                                <td>@bijzonderheden</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <button class="btn waves-effect waves-light" type="submit" name="action">Rit Wijzigen<i class="material-icons right">send</i></button>
+                </form>}
+        }
+    </div>
+    <div class="col s4"><div id="pagination-long"></div></div>
+    <div class="col s2">
+        <a href="#modal1" class="btn-floating btn-large waves-effect waves-light right red modal-trigger"><i class="material-icons">add</i></a>
+    </div>
+</div>
+<div>
+    <div id="modal1" class="modal">
+        <div class="modal-content">
+            <div class="container">
+                <form method="post">
+                    <input type="hidden" value="1" id="modal1-klantid" name="klantid" />
+                    <input type="hidden" value="1" id="modal1-autoid" name="autoid" />
+                    <input type="hidden" value="1" id="modal1-chauffeurid" name="chauffeurid" />
+                    <input type="hidden" name="operation" value="ritadd" />
+                    <label><center>Planning</center></label>
+                    <div class="divider"></div><div class="row"></div>
+                    <div class="input-field col s6">
+                        <input id="auto" oninput='onInputAuto()' type="text" list="autolijst" class="validate">
+                        <label for="auto">Auto</label>
+                        <datalist id="autolijst">
+                            @{ foreach (var row in AutoResults)
+                                {
+                                    <option autoid="@row.AutoID" value="@row.Kenteken @row.Soort_Wagen @row.Zitplaatsen"></option>
+                                }
+                            }
+                        </datalist>
+                    </div>
+                    <div class="input-field col s6">
+                        <input id="chauffeur" oninput='onInputChauffeur()' type="text" list="chauffeurlijst" class="validate">
+                        <label for="chauffeur">Chauffeur</label>
+                        <datalist id="chauffeurlijst">
+                            @{ foreach (var row in ChauffeurResults)
+                                {
+                                    <option chauffeurid="@row.ChauffeurID" value="@row.ChauffeurID @row.Chauffeurnaam"></option>
+                                }
+                            }
+                        </datalist>
+                    </div>
+                    <label><center>Ritgegevens</center></label>
+                    <div class="divider"></div><div class="row"></div>
+                    <div class="row"><div class="col s6"><center><label>Ophaaladres</label></center></div><div class="col s6"><center><label>Bestemmingsadres</label></center></div></div>
+                    <div class="row">
+                        <div class="col s6">
+                            <div class="input-field col s7">
+                                <input name="pco" type="text" class="validate">
+                                <label for="pco">Postcode</label>
+                            </div>
+                            <div class="input-field col s5">
+                                <input name="hnro" type="text" class="validate">
+                                <label for="hnro">Huisnummer</label>
+                            </div>
+                            <div class="input-field col s12">
+                                <input name="straato" type="text" class="validate">
+                                <label for="straato">Straat</label>
+                            </div>
+                            <div class="input-field col s12">
+                                <input name="stado" type="text" class="validate">
+                                <label for="stado">Stad</label>
+                            </div>
+                        </div>
+                        <div class="col s6">
+                            <div class="input-field col s7">
+                                <input name="pcb" type="text" class="validate">
+                                <label for="pcb">Postcode</label>
+                            </div>
+                            <div class="input-field col s5">
+                                <input name="hnrb" type="text" class="validate">
+                                <label for="hnrb">Huisnummer</label>
+                            </div>
+                            <div class="input-field col s12">
+                                <input name="straatb" type="text" class="validate">
+                                <label for="straatb">Straat</label>
+                            </div>
+                            <div class="input-field col s12">
+                                <input name="stadb" type="text" class="validate">
+                                <label for="stadb">Stad</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="input-field col s3">
+                            <label id="modal1-datum-label" for="modal1-datum">Datum</label>
+                            <input required name="ritdatum" id="modal1-datum" type="text" class="datepicker" />
+                        </div>
+                        <div class="input-field col s3">
+                            <label for="tijd">Tijd</label>
+                            <input required name="rittijd" id="tijd" type="text" class="timepicker" />
+                        </div>
+
+                        <div class="col s3">
+                            <input type="checkbox" name="herhalen" id="herhalen" />
+                            <label for="herhalen">Herhalen?</label>
+                        </div>
+                        <div class="input-field col s3">
+                            <select name="herhaler" id="herhaler">
+                                <option value="klant">Elke dag</option>
+                                <option value="klant1">Elke week</option>
+                                <option value="klant">Elke twee weken</option>
+                            </select>
+                            <label>Hoe vaak</label>
+                        </div>
+
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s3">
+                            <label for="pers">Aantal personen</label>
+                            <input name="pers" id="pers" type="number" />
+                        </div>
+                        <div class="col s3"></div>
+                        <div class="input-field col s3">
+                            <label for="begindat">Begin datum</label>
+                            <input name="begindat" id="begindat" type="text" class="datepicker" />
+                        </div>
+                        <div class="input-field col s3">
+                            <label for="einddat">Eind datum</label>
+                            <input name="einddat" id="einddat" type="text" class="datepicker" />
+                        </div>
+                    </div>
+
+                    <label><center>Klantgegevens</center></label>
+                    <div class="divider"></div><div class="row"></div>
+                    <div class="row">
+                        <div class="input-field col s12">
+                            <input id="klanten" oninput='onInputKlant()' type="text" list="klantenlijst" class="validate">
+                            <label for="klanten">Klant?</label>
+                            <datalist id="klantenlijst">
+                                <option value="Geen bestaande klant" id="0"></option>
+                                @{ foreach (var row in KlantenResults)
+                                    {
+                                        <option klantid="@row.KlantID" klantnaam="@row.Klant_naam" klanttelnummer="@row.Telnummer" klanthulpmiddel="@row.Hulpmiddel" klantwoonplaats="@row.Woonplaats" klantbijzonderheden="@row.Bijzonderheden" klantfactuuradres="@row.Factuuradres" klantdebituernummer="@row.Debiteurnummer" value="#@row.KlantID @row.Klant_naam @row.Woonplaats" id="@row.KlantID">@row.Klant_naam</option>
+                                    }
+                                }
+                            </datalist>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s4">
+                            <input disabled id="modal1-naam" type="text" class="validate">
+                            <label id="modal1-naam-label" for="modal1-naam">Naam</label>
+                        </div>
+                        <div class="input-field col s8">
+                            <input disabled id="modal1-woonplaats" type="text" class="validate">
+                            <label id="modal1-woonplaats-label" for="modal1-woonplaats">Adres</label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s6">
+                            <input disabled id="modal1-telefoon" type="text" class="validate">
+                            <label id="modal1-telefoon-label" for="modal1-telefoon">Telefoonnummer</label>
+                        </div>
+                        <div class="input-field col s6">
+                            <input disabled id="modal1-bijzonderheden" type="text" class="validate">
+                            <label id="modal1-bijzonderheden-label" for="modal1-bijzonderheden">Bijzonderheden</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="input-field col s12">
+                            <input disabled id="modal1-hulpmiddelen" type="text" class="validate">
+                            <label id="modal1-hulpmiddelen-label" for="modal1-hulpmiddelen">Hulpmiddelen</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <button class="btn waves-effect waves-light red" type="submit" name="action">Opslaan</button>
+                        <button class="btn modal-action modal-close" style="background-color:#f5f5f5; color: black" type="button">Annuleren</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@{if (Request.Form["operation"] == "ritedit")
+    {
+        int rowritid = Request.Form["ritid"].AsInt();
+        int rowklantid = Request.Form["klantid"].AsInt();
+
+        ophaaladres = db.QueryValue("SELECT Ophaaladres FROM Rit WHERE RitID = @0", rowritid);
+        bestemmingsadres = db.QueryValue("SELECT Bestemmingsadres FROM Rit WHERE RitID = @0", rowritid);
+        ophaalplaats = db.QueryValue("SELECT Ophaalplaats FROM Rit WHERE RitID = @0", rowritid);
+        bestemmingsplaats = db.QueryValue("SELECT Bestemmingsplaats FROM Rit WHERE RitID = @0", rowritid);
+        ritdatum = db.QueryValue("SELECT DatumRit FROM Rit WHERE RitID = @0", rowritid);
+        rittijd = db.QueryValue("SELECT Tijd FROM Rit WHERE RitID = @0", rowritid).ToString();
+        personen = db.QueryValue("SELECT Personen FROM Rit WHERE RitID = @0", rowritid).ToString();
+        bestemmingsplaats = db.QueryValue("SELECT Bestemmingsplaats FROM Rit WHERE RitID = @0", rowritid);
+        autoid = Convert.ToInt32(db.QueryValue("SELECT AutoID FROM Rit WHERE RitID = @0", rowritid));
+        chauffeurid = db.QueryValue("SELECT Chauffeurid FROM Rit WHERE RitID = @0", rowritid);
+        hulpmiddelen = db.QueryValue("SELECT Hulpmiddel FROM Klant WHERE KlantID = @0", rowklantid);
+        bijzonderheden = db.QueryValue("SELECT Bijzonderheden FROM Klant WHERE KlantID = @0", rowklantid);
+        string klantnaam = db.QueryValue("SELECT Klant_naam FROM Klant WHERE KlantID = @0", rowklantid);
+        string klantadres = db.QueryValue("SELECT Woonplaats FROM Klant WHERE KlantID = @0", rowklantid);
+        string klanttel = db.QueryValue("SELECT Telnummer FROM Klant WHERE KlantID = @0", rowklantid);
+
+
+
+        string currentautovalue = "";
+        string currentchauffeurvalue = "";
+        string currentklantvalue = "";
+        //Door de resultaten heen loopen om vast te stellen welke informatie van de huidige auto/chauffeur/klant is
+        foreach (var row in AutoResults)
+        {
+            if (autoid == row.AutoID)
+            {
+                currentautovalue = row.Kenteken +" "+ row.Soort_wagen +" "+ row.Zitplaatsen;
+            }
+        }
+        foreach (var row in ChauffeurResults)
+        {
+            if (chauffeurid == row.ChauffeurID)
+            {
+                currentchauffeurvalue = row.ChauffeurID + " " + row.Chauffeurnaam;
+            }
+        }
+        foreach (var row in KlantenResults)
+        {
+            if (rowklantid == row.KlantID)
+            {
+                currentklantvalue = row.KlantID + " " + row.Klant_naam + " " + row.Woonplaats;
+            }
+        }
+
+        <script>
+            $(document).ready(function () {
+                $('#modal2').modal();
+                $('#modal2').modal('open');
+            });
+        </script>
+
+        <div id="modal2" class="modal">
+            <div class="modal-content">
+                <div class="container">
+                    <form method="post">
+                        <input type="hidden" name="operation" value="riteditsub" />
+                        <input id="modal2-klantid" type="hidden" name="klantid" value="@rowklantid" />
+                        <input id="modal2-ritid" type="hidden" name="ritid" value="@rowritid" />
+                        <input id="modal2-autoid" type="hidden" name="autoid" value="@autoid" />
+                        <input id="modal2-chauffeurid" type="hidden" name="chauffeurid" value="@chauffeurid" />
+                        <label><center>Planning</center></label>
+                        <div class="divider"></div><div class="row"></div>
+                        <div class="row">
+                            <div class="input-field col s6">
+                                <input id="modal2-auto" value="@currentautovalue" oninput='modal2_onInputAuto()' type="text" list="modal2-autolijst" class="validate">
+                                <label for="modal2-auto">Auto</label>
+                                <datalist id="modal2-autolijst" value="XX-12-AC Personenwagen 4">
+                                    @{ foreach (var row in AutoResults)
+                                        {
+                                            <option autoid="@row.AutoID" value="@row.Kenteken @row.Soort_Wagen @row.Zitplaatsen"></option>
+                                        }
+                                    }
+                                </datalist>
+                            </div>
+                            <div class="input-field col s6">
+                                <input id="modal2-chauffeur" value="@currentchauffeurvalue" oninput='modal2_onInputChauffeur()' type="text" list="modal2-chauffeurlijst" class="validate">
+                                <label for="modal2-chauffeur">Chauffeur</label>
+                                <datalist id="modal2-chauffeurlijst">
+                                    @{ foreach (var row in ChauffeurResults)
+                                        {
+                                            <option chauffeurid="@row.ChauffeurID" value="@row.ChauffeurID @row.Chauffeurnaam"></option>
+                                        }
+                                    }
+                                </datalist>
+                            </div>
+                        </div>
+                        <label><center>Ritgegevens</center></label>
+                        <div class="divider"></div><div class="row"></div>
+                        <div class="row">
+                            <div class="input-field col s8">
+                                <input name="ophaal" id="ophaal" value="@ophaaladres" type="text" class="validate">
+                                <label for="ophaal">Ophaaladres</label>
+                            </div>
+                            <div class="input-field col s4">
+                                <input name="ophaalp" id="ophaalp" value="@ophaalplaats" type="text" class="validate">
+                                <label for="ophaal">Ophaaladres</label>
+                            </div>
+                            <div class="input-field col s8">
+                                <input name="bestemming" id="bestemming" value="@bestemmingsadres" type="text" class="validate">
+                                <label for="bestemming">Bestemmingadres</label>
+                            </div>
+                            <div class="input-field col s4">
+                                <input name="bestemmingp" id="bestemmingp" value="@bestemmingsplaats" type="text" class="validate">
+                                <label for="bestemming">Bestemmingadres</label>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="input-field col s3">
+                                <label for="pers">Aantal personen</label>
+                                <input value="@personen" name="pers" id="pers" type="number" />
+                            </div>
+
+                            <div class="input-field col s3">
+                                <label for="datum">Datum</label>
+                                <input required value="@DateTime.Parse(@ritdatum).ToString("d MMMM, yyyy")" name="ritdatum" id="datum" type="text" class="datepicker" />
+                            </div>
+                            <div class="input-field col s3">
+                                <label for="tijd">Tijd</label>
+                                <input required value="@rittijd" name="rittijd" id="tijd" type="text" class="timepicker" />
+                            </div>
+
+                        </div>
+
+                        <label><center>Klantgegevens</center></label>
+                        <div class="divider"></div><div class="row"></div>
+                        <div class="row">
+                            <div class="input-field col s12">
+                                <input id="modal2-klanten" value="@currentklantvalue" oninput='modal2_onInputKlant()' type="text" list="modal2-klantenlijst" class="validate">
+                                <label for="modal2-klanten">Klant?</label>
+                                <datalist id="modal2-klantenlijst">
+                                    <option value="Geen bestaande klant" id="0"></option>
+                                    @{ foreach (var row in KlantenResults)
+                                        {
+                                            <option klantid="@row.KlantID" klantnaam="@row.Klant_naam" klanttelnummer="@row.Telnummer" klanthulpmiddel="@row.Hulpmiddel" klantwoonplaats="@row.Woonplaats" klantbijzonderheden="@row.Bijzonderheden" klantfactuuradres="@row.Factuuradres" klantdebituernummer="@row.Debiteurnummer" value="#@row.KlantID @row.Klant_naam @row.Woonplaats" id="@row.KlantID">@row.Klant_naam</option>
+                                        }
+                                    }
+                                </datalist>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="input-field col s4">
+                                <input disabled id="modal2-naam" value="@klantnaam" type="text" class="validate">
+                                <label id="modal2-naam-label" for="modal1-naam">Naam</label>
+                            </div>
+                            <div class="input-field col s8">
+                                <input disabled id="modal2-woonplaats" value="@klantadres" type="text" class="validate">
+                                <label id="modal2-woonplaats-label" for="modal1-woonplaats">Adres</label>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="input-field col s6">
+                                <input disabled id="modal2-telefoon" value="@klanttel" type="text" class="validate">
+                                <label id="modal2-telefoon-label" for="modal1-telefoon">Telefoonnummer</label>
+                            </div>
+                            <div class="input-field col s6">
+                                <input disabled id="modal2-bijzonderheden" value="@bijzonderheden" type="text" class="validate">
+                                <label id="modal2-bijzonderheden-label" for="modal1-bijzonderheden">Bijzonderheden</label>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="input-field col s12">
+                                <input disabled id="modal2-hulpmiddelen" value="@hulpmiddelen" type="text" class="validate">
+                                <label id="modal2-hulpmiddelen-label" for="modal1-hulpmiddelen">Hulpmiddelen</label>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <button class="btn waves-effect waves-light red" type="submit" name="action">Opslaan</button>
+                            <button class="btn modal-action modal-close" style="background-color:#f5f5f5; color: black" type="button">Annuleren</button>
+                        </div>
+
+                    </form>
+
+
+                </div>
+            </div>
+        </div>
+
+
+
+                                        } }
+
+
+
+
+
+<script src="/js/Pagination-Mirjam/materialize-pagination.js"></script>
+<script>
+	$(function () {
+		$(function () {
+			$('#pagination-long').materializePagination({
+				align: 'center',
+				/**/
+				lastPage: @MaxPagination,
+	/**/
+	firstPage: 1,
+	urlParameter: 'page',
+	useUrlParameter: true,
+	onClickCallback: function (requestedPage) {
+		//console.log('Requested page is ' + requestedPage);
+		setTimeout(function () { location.reload(); }, 0);
+		//Set timeout is een fix voor Firefox
+	}
+});
+});
+});
+
+
+
+</script>

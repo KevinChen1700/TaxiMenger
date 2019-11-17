@@ -1,0 +1,299 @@
+﻿@using WebMatrix.Data
+@{
+	Layout = "_Layout.cshtml";
+
+	Database db = Database.Open("Menger");
+
+	bool isadmin = false;
+
+	if (Session["UID"] == null)
+	{
+		Response.Redirect("index.cshtml?notloggedin=true");
+	}
+	else
+	{
+		int userid = Convert.ToInt32(Session["UID"]);
+
+		var rolquery = db.QueryValue("SELECT Rol FROM Users WHERE UserID = @0", userid);
+
+		switch (rolquery)
+		{
+			case "User": isadmin = false; break;
+			case "Chauffeur": isadmin = false; break;
+			case "Administrator": isadmin = true; break;
+			case "Super Administrator": isadmin = true; break;
+			default: isadmin = false; break;
+		}
+	}
+
+	string username;
+	string naam;
+	string password;
+	string rol;
+
+	if (IsPost && isadmin == true)
+	{
+		if (Request.Form["operation"] == "useradd")
+		{
+			username = Request.Form["gebruikersnaam"];
+			naam = Request.Form["naam"];
+			password = Request.Form["password"];
+			rol = Request.Form["rol"];
+
+			if (rol != "Chauffeur")
+			{
+				password = Crypto.Hash(password);
+
+				var newuser = "INSERT INTO Users(Gebruikersnaam, Password, Naam, Rol) VALUES(@0,@1,@2,@3)";
+				db.Query(newuser, username, password, naam, rol);
+			}
+			else
+			{
+				password = Crypto.Hash(password);
+				
+				var newchauffeur = "INSERT INTO Chauffeur(ChauffeurNaam) VALUES(@0)";
+				var newuser = "INSERT INTO Users(Gebruikersnaam, ChauffeurID, Password, Naam, Rol) VALUES(@0,@1,@2,@3,@4)";
+				db.Query(newchauffeur, naam);
+				var chauffeurID = db.QueryValue("SELECT MAX(ChauffeurID) FROM Chauffeur");
+				db.Query(newuser, username, chauffeurID, password, naam, rol);
+
+			}
+
+		}
+		else if (Request.Form["operation"] == "useredit")
+		{
+			string inputpassword = Request.Form["password"];
+			rol = Request.Form["rol"];
+			if (String.IsNullOrEmpty(inputpassword))
+			{
+				var userupdate = "UPDATE Users SET Gebruikersnaam = @0, Naam = @1, Rol = @2 WHERE UserID = @3";
+				username = Request.Form["gebruikersnaam"];
+				naam = Request.Form["naam"];
+				rol = Request.Form["rol"];
+				int rowuser = Request.Form["UserID"].AsInt();
+				db.Query(userupdate, username, naam, rol, rowuser);
+
+			}
+			else
+			{
+				var userupdate = "UPDATE Users SET Gebruikersnaam = @0, Password = @1, Naam = @2, Rol = @3 WHERE UserID = @4";
+				username = Request.Form["gebruikersnaam"];
+				naam = Request.Form["naam"];
+				password = Request.Form["password"];
+				rol = Request.Form["rol"];
+				int rowuser = Request.Form["UserID"].AsInt();
+
+				password = Crypto.Hash(password);
+				db.Query(userupdate, username, password, naam, rol, rowuser);
+			}
+
+		}
+
+	}
+
+	string zoek = "";
+	string zoekinput = "";
+	int page = 1;
+	int offset = 1;
+
+	if (Request.QueryString["page"] != "")
+	{
+		page = Convert.ToInt32(Request.QueryString["page"]);
+	}
+	if (page >= offset)
+	{
+		offset = page;
+	}
+	if (!String.IsNullOrEmpty(Request.QueryString["zoek_input"]))
+	{
+		zoekinput = Request.QueryString["zoek_input"];
+		zoek = "WHERE UserID LIKE '%'+@0+'%' OR Gebruikersnaam LIKE '%'+@0+'%' OR Naam LIKE '%'+@0+'%' OR Rol LIKE '%'+@0+'%'";
+	}
+
+	//Ophalen van ALLE resultaten die voldoen aan zoek gegevens. Dit is voor het tellen van totale hoeveelheid resulaten
+	int ResultRowCount = db.Query("SELECT * FROM Users " + zoek + " ", zoekinput).Count();
+	//Hoeeelheid resultaten + 10 records per pagina - 1 en dan delen door records per pagina.
+	int MaxPagination = (ResultRowCount + 10 - 1) / 10;
+
+	var users = db.Query("SELECT * FROM Users " + zoek + " ORDER BY UserID OFFSET (@1-1)*10 ROWS FETCH NEXT 10 ROWS ONLY", zoekinput, offset);
+
+
+}
+<div class="col s12 m6 l4 input-field right-align">
+    <form method="get">
+        <input type="text" id="Gebruiker-zoek" name="zoek_input" class="autocomplete" value="@zoekinput">
+        <label for="Gebruiker-zoek">Zoeken</label>
+        <button class="btn waves-effect waves-light" type="submit">Zoek<i class="material-icons right">send</i></button>
+    </form>
+</div>
+<table class="responsive-table striped col s12">
+    <thead>
+        <tr>
+            <th>UserID</th>
+            <th>Gebruikersnaam</th>
+            <th>Naam</th>
+            <th>Rol</th>
+        </tr>
+    </thead>
+
+	<tbody>
+
+		@{	int i = 0;
+			foreach (var row in users)
+			{
+
+				<tr onclick="document.getElementById('@i').submit(); ">
+
+					<td style="display:none;"></td>
+					<td><form method="post" id="@i"><input type="hidden" name="operation" value="RowClick" /><input type="hidden" name="UserID" value="@row.UserID" /></form>@row.UserID</td>
+					<td>@row.Gebruikersnaam</td>
+					<td>@row.Naam</td>
+					<td>@row.Rol</td>
+				</tr>
+				i++;
+			} }
+	</tbody>
+</table>
+<div id="pagination-long" class="col s10 pagination"></div>
+<a href="#modal1" class="btn-floating btn-large waves-effect waves-light right red modal-trigger"><i class="material-icons">add</i></a>
+<div id="modal1" class="modal">
+	<div class="modal-content">
+		<div class="container">
+			<form method="post">
+				<input type="hidden" name="operation" value="useradd" />
+				<div class="row">
+					<div class="input-field col s2"></div>
+					<div class="input-field col s8">
+						<input name="gebruikersnaam" type="text" class="validate">
+						<label for="gebruikersnaam">Gebruikersnaam</label>
+					</div>
+					<div class="input-field col s2"></div>
+				</div>
+				<div class="row">
+					<div class="input-field col s2"></div>
+					<div class="input-field col s4">
+						<select name="rol">
+							<option value="Gebruiker">Gebruiker</option>
+							<option value="Administrator">Administrator</option>
+							<option value="Super Administrator">Super Administrator</option>
+							<option value="Chauffeur">Chauffeur</option>
+						</select>
+						<label>Rol</label>
+					</div>
+				</div>
+				<div class="row">
+					<div class="input-field col s2"></div>
+					<div class="input-field col s8">
+						<input name="password" type="password" class="validate">
+						<label for="password">Wachtwoord</label>
+					</div>
+					<div class="input-field col s2"></div>
+				</div>
+				<div class="row">
+					<div class="input-field col s2"></div>
+					<div class="input-field col s8">
+						<input name="naam" type="text" class="validate">
+						<label for="naam">Naam</label>
+					</div>
+					<div class="input-field col s2"></div>
+				</div>
+
+				<div class="row">
+					<div class="input-field col s2"></div>
+					<button class="btn waves-effect waves-light red" type="submit" name="action">Opslaan</button>
+					<button class="btn modal-action modal-close" style="background-color:#f5f5f5; color: black" type="button">Annuleren</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+@{
+	if (Request.Form["operation"] == "RowClick")
+	{
+		int rowuser = Request.Form["UserID"].AsInt();
+		username = db.QueryValue("SELECT Gebruikersnaam FROM Users WHERE UserID = @0", rowuser);
+		naam = db.QueryValue("SELECT Naam FROM Users WHERE UserID = @0", rowuser);
+		password = null;
+		rol = db.QueryValue("SELECT Rol FROM Users WHERE UserID = @0", rowuser);
+
+		<script>
+			$(document).ready(function () {
+				$('#modal2').modal();
+				$('#modal2').modal('open');
+			});
+		</script>
+
+		<div id="modal2" class="modal">
+			<div class="modal-content">
+				<div class="container">
+					<form method="post">
+						<input type="hidden" name="operation" value="useredit" />
+						<input type="hidden" name="UserID" value="@rowuser" />
+						<div class="row">
+							<div class="input-field col s2"></div>
+							<div class="input-field col s8">
+								<input name="gebruikersnaam" type="text" value="@username" class="validate">
+								<label for="gebruikersnaam">Gebruikersnaam</label>
+							</div>
+							<div class="input-field col s2"></div>
+						</div>
+						<div class="row">
+							<div class="input-field col s2"></div>
+							<div class="input-field col s4">
+								<select name="rol">
+									<option value="Gebruiker">Gebruiker</option>
+									<option value="Administrator">Administrator</option>
+									<option value="Super Administrator">Super Administrator</option>
+								</select>
+								<label>Rol</label>
+							</div>
+						</div>
+						<div class="row">
+							<div class="input-field col s2"></div>
+							<div class="input-field col s8">
+								<input name="password" type="password" class="validate">
+								<label for="password">Wachtwoord</label>
+							</div>
+							<div class="input-field col s2"></div>
+						</div>
+						<div class="row">
+							<div class="input-field col s2"></div>
+							<div class="input-field col s8">
+								<input name="naam" type="text" value="@naam" class="validate">
+								<label for="naam">Naam</label>
+							</div>
+							<div class="input-field col s2"></div>
+						</div>
+
+						<div class="row">
+							<div class="input-field col s2"></div>
+							<button class="btn waves-effect waves-light red" type="submit" name="action">Opslaan</button>
+							<button class="btn modal-action modal-close" style="background-color:#f5f5f5; color: black" type="button">Annuleren</button>
+						</div>
+					</form>
+
+				</div>
+			</div>
+		</div>
+	}
+}
+<script src="/js/Pagination-Mirjam/materialize-pagination.js"></script>
+<script>
+    $(function () {
+        $(function () {
+            $('#pagination-long').materializePagination({
+                align: 'center',
+                lastPage: @MaxPagination,
+                firstPage: 1,
+                urlParameter: 'page',
+                useUrlParameter: true,
+                onClickCallback: function (requestedPage) {
+                    //console.log('Requested page is ' + requestedPage);
+                    setTimeout(function () { location.reload(); }, 0);
+                    //Set timeout is een fix voor Firefox
+                }
+            });
+        });
+    });
+</script>
